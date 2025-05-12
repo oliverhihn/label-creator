@@ -271,4 +271,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = LabelCreator()
     window.show()
+    # init status bar
+    window.statusBar().showMessage("")
     sys.exit(app.exec_())
