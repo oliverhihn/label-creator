@@ -12,8 +12,8 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QLabel,
     QPushButton,
-    QSizePolicy,
     QTextEdit,
+    QSizePolicy,
 )
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QFont, QIcon
 from PyQt5.QtCore import Qt, QSize, QRect
@@ -93,13 +93,12 @@ class LabelCreator(QMainWindow):
         text_layout.addWidget(self.text_input)
         main_layout.addLayout(text_layout)
 
-        # Preview area
         self.preview_label = QLabel()
-        self.preview_label.setAlignment(Qt.AlignCenter)
-        self.preview_label.setMinimumSize(400, 200)
-        self.preview_label.setStyleSheet("border: 1px solid black;")
+        self.preview_label.setMinimumHeight(200)
+        self.preview_label.setMinimumWidth(400)
         self.preview_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        main_layout.addWidget(self.preview_label)
+        self.preview_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.preview_label, 0, Qt.AlignCenter)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -131,6 +130,8 @@ class LabelCreator(QMainWindow):
     def update_preview(self):
         dims = self.get_current_dimensions()
         w, h = dims["width"], dims["height"]
+
+        # Create a new pixmap at the actual dimensions
         pix = QPixmap(w, h)
         pix.fill(Qt.white)
         painter = QPainter(pix)
@@ -141,9 +142,20 @@ class LabelCreator(QMainWindow):
         self.draw_label_content(painter, w, h, icon_path, text)
 
         painter.end()
+
+        max_preview_width = self.preview_label.width()
+        max_preview_height = self.preview_label.height()
+
+        # Create a new clean pixmap for the preview with the exact scaled size
         scaled = pix.scaled(
-            self.preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+            max_preview_width,
+            max_preview_height,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation,
         )
+
+        # Clear any previous content and set the fresh scaled pixmap
+        self.preview_label.clear()
         self.preview_label.setPixmap(scaled)
 
     def draw_label_content(
