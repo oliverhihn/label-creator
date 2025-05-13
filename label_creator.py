@@ -36,7 +36,7 @@ class LabelCreator(QMainWindow):
     def load_dimensions(self):
         try:
             with open("dimensions.yaml", "r") as file:
-                data = yaml.safe_load(file)
+                data: dict = yaml.safe_load(file)
                 self.dimensions = data.get("dimensions", [])
         except Exception as e:
             print(f"Error loading dimensions: {e}")
@@ -72,11 +72,13 @@ class LabelCreator(QMainWindow):
         self.icon_combo = QComboBox()
         self.icon_combo.setIconSize(QSize(24, 24))
         for icon in self.icons:
-            if icon == "None":
-                self.icon_combo.addItem("None")
-            else:
+            if icon != "None":
                 icon_path = os.path.join("icons", icon)
                 self.icon_combo.addItem(QIcon(icon_path), icon)
+
+        if self.icons:
+            self.icon_combo.insertSeparator(self.icon_combo.count())
+        self.icon_combo.addItem("None")
         icon_layout.addWidget(icon_label)
         icon_layout.addWidget(self.icon_combo)
         main_layout.addLayout(icon_layout)
@@ -101,11 +103,8 @@ class LabelCreator(QMainWindow):
 
         # Buttons
         button_layout = QHBoxLayout()
-        preview_button = QPushButton("Update Preview")
-        preview_button.clicked.connect(self.update_preview)
         generate_button = QPushButton("Generate Label")
         generate_button.clicked.connect(self.generate_label)
-        button_layout.addWidget(preview_button)
         button_layout.addWidget(generate_button)
         main_layout.addLayout(button_layout)
 
@@ -217,7 +216,7 @@ class LabelCreator(QMainWindow):
             painter.setFont(font)
             fm = painter.fontMetrics()
             if fm.height() * len(lines) > max_h or any(
-                fm.horizontalAdvance(l) > max_w for l in lines
+                fm.horizontalAdvance(line) > max_w for line in lines
             ):
                 break
             size += 2
@@ -227,7 +226,7 @@ class LabelCreator(QMainWindow):
         fm = painter.fontMetrics()
         while size > 10 and (
             fm.height() * len(lines) > max_h
-            or any(fm.horizontalAdvance(l) > max_w for l in lines)
+            or any(fm.horizontalAdvance(line) > max_w for line in lines)
         ):
             size -= 1
             font.setPointSize(size)
@@ -271,6 +270,5 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = LabelCreator()
     window.show()
-    # init status bar
     window.statusBar().showMessage("")
     sys.exit(app.exec_())
