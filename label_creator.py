@@ -146,7 +146,9 @@ class LabelCreator(QMainWindow):
         )
         self.preview_label.setPixmap(scaled)
 
-    def draw_label_content(self, painter, width, height, icon_path, text):
+    def draw_label_content(
+        self, painter: QPainter, width: int, height: int, icon_path: str, text: str
+    ):
         base_size = max(12, min(36, height // 8))
         font = QFont("Arial", base_size)
         painter.setFont(font)
@@ -204,7 +206,9 @@ class LabelCreator(QMainWindow):
             rect = QRect(area_x, area_y, area_w, area_h)
             painter.drawText(rect, Qt.AlignHCenter | Qt.AlignVCenter, text)
 
-    def find_optimal_font_size_no_wrap(self, painter, lines, max_w, max_h, start):
+    def find_optimal_font_size_no_wrap(
+        self, painter: QPainter, lines: list, max_w: int, max_h: int, start: int
+    ):
         size = start
         font = painter.font()
         font.setPointSize(size)
