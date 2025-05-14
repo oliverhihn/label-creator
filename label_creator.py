@@ -12,8 +12,9 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QLabel,
     QPushButton,
-    QTextEdit,
+    QCheckBox,
     QSizePolicy,
+    QTextEdit,
 )
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QFont, QIcon
 from PyQt5.QtCore import Qt, QSize, QRect
@@ -93,12 +94,20 @@ class LabelCreator(QMainWindow):
         text_layout.addWidget(self.text_input)
         main_layout.addLayout(text_layout)
 
+        # Padding checkbox
+        padding_layout = QHBoxLayout()
+        self.padding_check = QCheckBox("Padding")
+        self.padding_check.setChecked(False)
+        padding_layout.addWidget(self.padding_check)
+        main_layout.addLayout(padding_layout)
+
+        # Preview area
         self.preview_label = QLabel()
-        self.preview_label.setMinimumHeight(200)
-        self.preview_label.setMinimumWidth(400)
+        # Remove fixed minimums and let it expand to fill
         self.preview_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.preview_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(self.preview_label, 0, Qt.AlignCenter)
+        # Add with stretch=1 so it takes remaining space
+        main_layout.addWidget(self.preview_label, 1)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -111,6 +120,7 @@ class LabelCreator(QMainWindow):
         self.dim_combo.currentIndexChanged.connect(self.update_preview)
         self.icon_combo.currentIndexChanged.connect(self.update_preview)
         self.text_input.textChanged.connect(self.update_preview)
+        self.padding_check.stateChanged.connect(self.update_preview)
 
         # Initial render
         self.update_preview()
@@ -139,7 +149,8 @@ class LabelCreator(QMainWindow):
 
         icon_path = self.get_current_icon_path()
         text = self.text_input.toPlainText().rstrip("\n")
-        self.draw_label_content(painter, w, h, icon_path, text)
+        use_padding = self.padding_check.isChecked()
+        self.draw_label_content(painter, w, h, icon_path, text, use_padding)
 
         painter.end()
 
@@ -159,31 +170,39 @@ class LabelCreator(QMainWindow):
         self.preview_label.setPixmap(scaled)
 
     def draw_label_content(
-        self, painter: QPainter, width: int, height: int, icon_path: str, text: str
+        self,
+        painter: QPainter,
+        width: int,
+        height: int,
+        icon_path: str,
+        text: str,
+        padding: bool = False,
     ):
         base_size = max(12, min(36, height // 8))
         font = QFont("Arial", base_size)
         painter.setFont(font)
 
+        # Determine padding margin
+        pad = 10 if padding else 0
         # Prepare lines
         lines = text.split("\n") if text else []
 
         if icon_path and lines:
             # Draw icon
             icon = QPixmap(icon_path)
-            icon_h = height - 20
+            icon_h = height - pad * 2
             icon_w = int(icon.width() * (icon_h / icon.height()))
-            icon_x, icon_y = 10, 10
+            icon_x, icon_y = pad, pad
             painter.drawPixmap(icon_x, icon_y, icon_w, icon_h, icon)
 
             # Divider
             painter.setPen(QPen(Qt.black, 2))
-            line_x = icon_x + icon_w + 10
-            painter.drawLine(line_x, 10, line_x, height - 10)
+            line_x = icon_x + icon_w + pad
+            painter.drawLine(line_x, pad, line_x, height - pad)
 
             # Text area
-            area_x, area_y = line_x + 10, 10
-            area_w, area_h = width - area_x - 10, height - 20
+            area_x, area_y = line_x + 10, pad
+            area_w, area_h = width - area_x - pad, height - pad * 2
 
             # Optimal font size
             size = self.find_optimal_font_size_no_wrap(
@@ -198,7 +217,7 @@ class LabelCreator(QMainWindow):
 
         elif icon_path:
             icon = QPixmap(icon_path)
-            icon_h = height - 20
+            icon_h = height - pad * 2
             icon_w = int(icon.width() * (icon_h / icon.height()))
             painter.drawPixmap(
                 (width - icon_w) // 2, (height - icon_h) // 2, icon_w, icon_h, icon
@@ -206,8 +225,8 @@ class LabelCreator(QMainWindow):
 
         elif lines:
             # Text-only area
-            area_x, area_y = 10, 10
-            area_w, area_h = width - 20, height - 20
+            area_x, area_y = pad, pad
+            area_w, area_h = width - pad * 2, height - pad * 2
 
             size = self.find_optimal_font_size_no_wrap(
                 painter, lines, area_w, area_h, base_size
@@ -226,16 +245,23 @@ class LabelCreator(QMainWindow):
         font.setPointSize(size)
         painter.setFont(font)
         fm = painter.fontMetrics()
-        # Increase until overflow
-        while size < min(72, max_h // (len(lines) + 1)):
-            font.setPointSize(size + 2)
+        # Determine vertical limit: full height for single line, else divide by lines+1
+        height_limit = max_h if len(lines) == 1 else max_h // (len(lines) + 1)
+        # Increase until overflow (no fixed upper cap)
+        while True:
+            next_size = size + 2
+            # Stop if next size exceeds vertical limit
+            if next_size > height_limit:
+                break
+            font.setPointSize(next_size)
             painter.setFont(font)
             fm = painter.fontMetrics()
+            # Break on any overflow
             if fm.height() * len(lines) > max_h or any(
                 fm.horizontalAdvance(line) > max_w for line in lines
             ):
                 break
-            size += 2
+            size = next_size
         # Decrease if necessary
         font.setPointSize(size)
         painter.setFont(font)
@@ -260,7 +286,8 @@ class LabelCreator(QMainWindow):
 
         icon_path = self.get_current_icon_path()
         text = self.text_input.toPlainText().rstrip("\n")
-        self.draw_label_content(painter, w, h, icon_path, text)
+        use_padding = self.padding_check.isChecked()
+        self.draw_label_content(painter, w, h, icon_path, text, use_padding)
 
         painter.end()
 
