@@ -138,9 +138,53 @@ class LabelCreator(QMainWindow):
         return None if icon == "None" else os.path.join("icons", icon)
 
     def update_preview(self):
+        # Get selected dimensions
         dims = self.get_current_dimensions()
-        w, h = dims["width"], dims["height"]
+        width_val, h = dims.get("width"), dims.get("height")
+        # Determine padding margin
+        use_padding = self.padding_check.isChecked()
+        pad = 10 if use_padding else 0
+        # Handle dynamic width (auto): fit font to height, then compute width
+        if isinstance(width_val, str) and width_val.lower() == "auto":
+            # Temp painter for measurements
+            temp_pix = QPixmap(1, 1)
+            temp_painter = QPainter(temp_pix)
+            # Compute optimal font size by height only (large max_w)
+            base_size = max(12, min(36, h // 8))
+            temp_painter.setFont(QFont("Arial", base_size))
+            # find size using a very large max_w
+            size = self.find_optimal_font_size_no_wrap(
+                temp_painter,
+                self.text_input.toPlainText().rstrip("\n").split("\n"),
+                max_w=10**9,
+                max_h=h - pad * 2,
+                start=base_size,
+            )
+            font = QFont("Arial", size)
+            temp_painter.setFont(font)
+            fm = temp_painter.fontMetrics()
+            text = self.text_input.toPlainText().rstrip("\n") or ""
+            lines = text.split("\n")
+            text_max_w = max((fm.horizontalAdvance(line) for line in lines), default=0)
+            icon_path = self.get_current_icon_path()
+            # Calculate final width including icon and padding
+            if icon_path and text:
+                icon = QPixmap(icon_path)
+                icon_h = h - pad * 2
+                icon_w = int(icon.width() * (icon_h / icon.height()))
+                w = pad + icon_w + pad + text_max_w + pad
+            else:
+                w = text_max_w + pad * 2
+            temp_painter.end()
+        else:
+            w = width_val
 
+        # Ensure width is integer
+        if not isinstance(w, int):
+            try:
+                w = int(w)
+            except ValueError:
+                w = 0
         # Create a new pixmap at the actual dimensions
         pix = QPixmap(w, h)
         pix.fill(Qt.white)
@@ -240,28 +284,32 @@ class LabelCreator(QMainWindow):
     def find_optimal_font_size_no_wrap(
         self, painter: QPainter, lines: list, max_w: int, max_h: int, start: int
     ):
-        size = start
+        # Determine vertical limit: full height for single line, else divide by lines+1
+        height_limit = max_h if len(lines) == 1 else max_h // (len(lines) + 1)
+        # For single-line, start at full available height; for multi-line, start at provided start size
+        if len(lines) == 1:
+            size = height_limit
+        else:
+            size = start
         font = painter.font()
         font.setPointSize(size)
         painter.setFont(font)
-        fm = painter.fontMetrics()
-        # Determine vertical limit: full height for single line, else divide by lines+1
-        height_limit = max_h if len(lines) == 1 else max_h // (len(lines) + 1)
-        # Increase until overflow (no fixed upper cap)
-        while True:
-            next_size = size + 2
-            # Stop if next size exceeds vertical limit
-            if next_size > height_limit:
-                break
-            font.setPointSize(next_size)
-            painter.setFont(font)
-            fm = painter.fontMetrics()
-            # Break on any overflow
-            if fm.height() * len(lines) > max_h or any(
-                fm.horizontalAdvance(line) > max_w for line in lines
-            ):
-                break
-            size = next_size
+        # Increase until overflow only for multi-line
+        if len(lines) != 1:
+            while True:
+                next_size = size + 2
+                # Stop if next size exceeds vertical limit
+                if next_size > height_limit:
+                    break
+                font.setPointSize(next_size)
+                painter.setFont(font)
+                fm = painter.fontMetrics()
+                # Break on any overflow
+                if fm.height() * len(lines) > max_h or any(
+                    fm.horizontalAdvance(line) > max_w for line in lines
+                ):
+                    break
+                size = next_size
         # Decrease if necessary
         font.setPointSize(size)
         painter.setFont(font)
@@ -278,7 +326,45 @@ class LabelCreator(QMainWindow):
 
     def generate_label(self):
         dims = self.get_current_dimensions()
-        w, h = dims["width"], dims["height"]
+        width_val, h = dims.get("width"), dims.get("height")
+        # Determine padding margin
+        use_padding = self.padding_check.isChecked()
+        pad = 10 if use_padding else 0
+        # Handle dynamic width (auto)
+        if isinstance(width_val, str) and width_val.lower() == 'auto':
+            temp_pix = QPixmap(1, 1)
+            temp_painter = QPainter(temp_pix)
+            base_size = max(12, min(36, h // 8))
+            temp_painter.setFont(QFont("Arial", base_size))
+            size = self.find_optimal_font_size_no_wrap(
+                temp_painter,
+                self.text_input.toPlainText().rstrip("\n").split("\n"),
+                max_w=10**9,
+                max_h=h - pad * 2,
+                start=base_size,
+            )
+            font = QFont("Arial", size)
+            temp_painter.setFont(font)
+            fm = temp_painter.fontMetrics()
+            text = self.text_input.toPlainText().rstrip("\n") or ""
+            lines = text.split("\n")
+            text_max_w = max((fm.horizontalAdvance(line) for line in lines), default=0)
+            icon_path = self.get_current_icon_path()
+            if icon_path and text:
+                icon = QPixmap(icon_path)
+                icon_h = h - pad * 2
+                icon_w = int(icon.width() * (icon_h / icon.height()))
+                w = pad + icon_w + pad + text_max_w + pad
+            else:
+                w = text_max_w + pad * 2
+            temp_painter.end()
+        else:
+            w = width_val
+        # Ensure width is integer
+        try:
+            w = int(w)
+        except Exception:
+            w = 0
         pix = QPixmap(w, h)
         pix.fill(Qt.white)
         painter = QPainter(pix)
