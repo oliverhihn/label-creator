@@ -284,8 +284,8 @@ class LabelCreator(QMainWindow):
     def find_optimal_font_size_no_wrap(
         self, painter: QPainter, lines: list, max_w: int, max_h: int, start: int
     ):
-        # Determine vertical limit: full height for single line, else divide by lines+1
-        height_limit = max_h if len(lines) == 1 else max_h // (len(lines) + 1)
+        # Determine vertical limit: full height for single line, else divide evenly across lines
+        height_limit = max_h if len(lines) == 1 else max_h // len(lines)
         # For single-line, start at full available height; for multi-line, start at provided start size
         if len(lines) == 1:
             size = height_limit
@@ -331,7 +331,7 @@ class LabelCreator(QMainWindow):
         use_padding = self.padding_check.isChecked()
         pad = 10 if use_padding else 0
         # Handle dynamic width (auto)
-        if isinstance(width_val, str) and width_val.lower() == 'auto':
+        if isinstance(width_val, str) and width_val.lower() == "auto":
             temp_pix = QPixmap(1, 1)
             temp_painter = QPainter(temp_pix)
             base_size = max(12, min(36, h // 8))

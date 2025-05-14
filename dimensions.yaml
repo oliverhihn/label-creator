@@ -1,11 +1,11 @@
 dimensions:
   - name: "Narrow"
     width: 500
-    height: 200
+    height: 400
   - name: "Wide"
     width: 1000
-    height: 200
+    height: 400
   # --- Dynamic label grows with text length ---
   - name: "Dynamic"
     width: auto
-    height: 200
+    height: 400
