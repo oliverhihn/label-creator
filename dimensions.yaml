@@ -1,13 +1,7 @@
 dimensions:
-  - name: "Small"
-    width: 400
+  - name: "Narrow"
+    width: 500
     height: 200
-  - name: "Medium"
-    width: 600
-    height: 200
-  - name: "Large"
-    width: 800
-    height: 200
-  - name: "Extra Large"
-    width: 1200
+  - name: "Wide"
+    width: 1000
     height: 200
