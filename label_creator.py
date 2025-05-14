@@ -98,7 +98,10 @@ class LabelCreator(QMainWindow):
         padding_layout = QHBoxLayout()
         self.padding_check = QCheckBox("Padding")
         self.padding_check.setChecked(False)
+        self.divider_check = QCheckBox("Show Divider")
+        self.divider_check.setChecked(True)  # Default ON
         padding_layout.addWidget(self.padding_check)
+        padding_layout.addWidget(self.divider_check)
         main_layout.addLayout(padding_layout)
 
         # Preview area
@@ -121,6 +124,7 @@ class LabelCreator(QMainWindow):
         self.icon_combo.currentIndexChanged.connect(self.update_preview)
         self.text_input.textChanged.connect(self.update_preview)
         self.padding_check.stateChanged.connect(self.update_preview)
+        self.divider_check.stateChanged.connect(self.update_preview)
 
         # Initial render
         self.update_preview()
@@ -240,13 +244,16 @@ class LabelCreator(QMainWindow):
             painter.drawPixmap(icon_x, icon_y, icon_w, icon_h, icon)
 
             # Divider
-            painter.setPen(QPen(Qt.black, 2))
             line_x = icon_x + icon_w + pad
-            painter.drawLine(line_x, pad, line_x, height - pad)
+            if self.divider_check.isChecked():
+                painter.setPen(QPen(Qt.black, 2))
+                painter.drawLine(line_x, pad, line_x, height - pad)
 
             # Text area
-            area_x, area_y = line_x + 10, pad
-            area_w, area_h = width - area_x - pad, height - pad * 2
+            area_x = line_x + 10 if self.divider_check.isChecked() else icon_x + icon_w + pad
+            area_y = pad
+            area_w = width - area_x - pad
+            area_h = height - pad * 2
 
             # Optimal font size
             size = self.find_optimal_font_size_no_wrap(
